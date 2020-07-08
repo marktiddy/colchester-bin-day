@@ -7,9 +7,9 @@ const axios = require('axios');
 const messages = {
   welcome: 'Welcome to the Colchester Waste Collection Skill.',
   blueweek:
-    "It's a blue week this week. Prepare your plastic, paper, clothing, garden waste and food waste for collection.",
+    "It's a green week this week. Prepare your plastic, paper, clothing, garden waste and food waste for collection.",
   greenweek:
-    "It's a green week this week. Prepare up to 3 black bags, food waste and empty bottles and cans for collection.",
+    "It's a blue week this week. Prepare up to 3 black bags, food waste and empty bottles and cans for collection.",
   nextblue:
     'Your collection day has already passed but next week is a blue week.',
   nextgreen:

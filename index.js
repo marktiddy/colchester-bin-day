@@ -1,15 +1,17 @@
 const Alexa = require('ask-sdk-core');
-const cheerio = require('cheerio');
 const axios = require('axios');
+const moment = require('moment');
+
+//NOTE - REMEMBER TO ZIP USING TERMINAL
 
 //HELPER FUNCTIONS AND MESSAGES
 //Our messages to return
 const messages = {
   welcome: 'Welcome to the Colchester Waste Collection Skill.',
   greenweek:
-    "It's a green week this week. Prepare your plastic, paper, clothing, garden waste and food waste for collection.",
+    "It's a green week this week. Prepare your plastic, paper, garden waste and food waste for collection.",
   blueweek:
-    "It's a blue week this week. Prepare up to 3 black bags, food waste and empty bottles and cans for collection.",
+    "It's a blue week this week. Prepare up to 3 black bags, food waste and empty bottles and cans for collection. Remember, you are now required to separate your bottles and cans into separate containers.",
   nextblue:
     'Your collection day has already passed but next week is a blue week.',
   nextgreen:
@@ -151,17 +153,40 @@ const LaunchRequest = {
         );
         const id = areaData.data.value[0].new_llpgid;
         const name = areaData.data.value[0].new_name;
+
         binDayNum = getDayNum(areaData.data.value[0].new_newcollectionday);
         const dataUrl = `https://www.colchester.gov.uk/check-my-collection-day/?query=${id}&name=${name}`;
-        const { data } = await axios.get(dataUrl);
-        const $ = cheerio.load(data);
-        const week = $('#cbc-blueweek-greenweek > div > h2');
+
+        //New code using moment
+        //Get which week number recycling (green) is
+        const greenCollectionWeek =
+          areaData.data.value[0].new_newweekgardenpaperandplastic;
+
+        const today = new moment().add(2, 'day');
+        const oldDate = moment('07-05-2020', 'MM-DD-YYYY'); //I know for my test this was the start of a green week
+
+        let week;
+
+        //If green collection is 2 then collection is on even number weeks //1 odd //2 even
+        if (today.diff(oldDate, 'week') % 2 === 0) {
+          if (greenCollectionWeek === '2') {
+            week = 'GREEN WEEK';
+          } else {
+            week = 'BLUE WEEK';
+          }
+        } else {
+          if (greenCollectionWeek === '2') {
+            week = 'BLUE WEEK';
+          } else {
+            week = 'GREEN WEEK';
+          }
+        }
 
         //Check if our bin day has passed
         const todayNum = new Date().getDay();
         if (todayNum > binDayNum) {
           //bin day has passed
-          if (week.html() === 'BLUE WEEK') {
+          if (week === 'BLUE WEEK') {
             //Next week must be green
             speakOutput = `${messages.welcome} ${messages.nextgreen} ${
               messages.collectionday
@@ -175,7 +200,7 @@ const LaunchRequest = {
           }
         } else {
           //bin day hasn't passed
-          if (week.html() === 'BLUE WEEK') {
+          if (week === 'BLUE WEEK') {
             speakOutput = `${messages.welcome} ${messages.blueweek} ${
               messages.collectionday
             } ${getDayName(binDayNum)} `;
@@ -266,15 +291,38 @@ const GetBinDay_Handler = {
         const name = areaData.data.value[0].new_name;
         binDayNum = getDayNum(areaData.data.value[0].new_newcollectionday);
         const dataUrl = `https://www.colchester.gov.uk/check-my-collection-day/?query=${id}&name=${name}`;
-        const { data } = await axios.get(dataUrl);
-        const $ = cheerio.load(data);
-        const week = $('#cbc-blueweek-greenweek > div > h2');
+
+        //New code using moment
+        //Get which week number recycling (green) is
+        const greenCollectionWeek =
+          areaData.data.value[0].new_newweekgardenpaperandplastic;
+
+        const today = new moment().add(2, 'day');
+
+        const oldDate = moment('07-05-2020', 'MM-DD-YYYY'); //I know for my test this was the start of a green week
+
+        let week;
+
+        //If green collection is 2 then collection is on even number weeks //1 odd //2 even
+        if (today.diff(oldDate, 'week') % 2 === 0) {
+          if (greenCollectionWeek === '2') {
+            week = 'GREEN WEEK';
+          } else {
+            week = 'BLUE WEEK';
+          }
+        } else {
+          if (greenCollectionWeek === '2') {
+            week = 'BLUE WEEK';
+          } else {
+            week = 'GREEN WEEK';
+          }
+        }
 
         //Check if our bin day has passed
         const todayNum = new Date().getDay();
         if (todayNum > binDayNum) {
           //bin day has passed
-          if (week.html() === 'BLUE WEEK') {
+          if (week === 'BLUE WEEK') {
             //Next week must be green
             speakOutput = `${messages.nextgreen} ${
               messages.collectionday
@@ -288,7 +336,7 @@ const GetBinDay_Handler = {
           }
         } else {
           //bin day hasn't passed
-          if (week.html() === 'BLUE WEEK') {
+          if (week === 'BLUE WEEK') {
             speakOutput = `${messages.blueweek} ${
               messages.collectionday
             } ${getDayName(binDayNum)} `;

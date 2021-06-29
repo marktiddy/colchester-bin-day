@@ -1,9 +1,12 @@
 const axios = require('axios');
-const cheerio = require('cheerio');
+const moment = require('moment');
+
+//HELPER FUNCTIONS AND MESSAGES
+//Our messages to return
 const messages = {
   welcome: 'Welcome to the Colchester Waste Collection Skill.',
   greenweek:
-    "It's a green week this week. Prepare your plastic, paper, clothing, garden waste and food waste for collection.",
+    "It's a green week this week. Prepare your plastic, paper, garden waste and food waste for collection.",
   blueweek:
     "It's a blue week this week. Prepare up to 3 black bags, food waste and empty bottles and cans for collection.",
   nextblue:
@@ -81,27 +84,69 @@ const getDayName = (day) => {
       return 'Your bin day is unknown';
   }
 };
+//END OF HELPER FUNCTIONS
 
-const testfunc = async () => {
+const PERMISSIONS = ['read::alexa:device:all:address:country_and_postal_code'];
+
+const LaunchRequest = async () => {
+  //2 - We have a postcode so now we need to do some querying for formatting
+  //format the postcode
+  let postcode = {
+    postalCode: 'CO1 2PF',
+  };
+  let postcodeFormatted;
+  if (postcode.postalCode.indexOf(' ') === -1) {
+    const back = postcode.postalCode.slice(
+      postcode.postalCode.length - 3,
+      postcode.postalCode.length
+    );
+    const front = postcode.postalCode.slice(0, postcode.postalCode.length - 3);
+    postcodeFormatted = front + ' ' + back;
+  } else {
+    postcodeFormatted = postcode.postalCode;
+  }
+  //3 - Make our first API request
   let speakOutput;
-  let postcodeFormatted = 'CO2 7EW';
   let areaData = await axios.get(
     `http://colchester.gov.uk/_odata/LLPG?$filter=(new_postcoide%20eq%20%27${postcodeFormatted}%27)`
   );
   const id = areaData.data.value[0].new_llpgid;
   const name = areaData.data.value[0].new_name;
+
   binDayNum = getDayNum(areaData.data.value[0].new_newcollectionday);
   const dataUrl = `https://www.colchester.gov.uk/check-my-collection-day/?query=${id}&name=${name}`;
-  const { data } = await axios.get(dataUrl);
-  const $ = cheerio.load(data);
-  const week = $('#cbc-blueweek-greenweek > div > h2');
-  console.log(week.html());
+
+  //Get which week number recycling (green) is
+  const greenCollectionWeek =
+    areaData.data.value[0].new_newweekgardenpaperandplastic;
+
+  const today = new moment().add(2, 'day');
+  console.log(today);
+  const oldDate = moment('07-05-2020', 'MM-DD-YYYY'); //I know for my test this was the start of a green week
+
+  let week;
+
+  //If green collection is 2 then collection is on even number weeks //1 odd //2 even
+  if (today.diff(oldDate, 'week') % 2 === 0) {
+    if (greenCollectionWeek === '2') {
+      week = 'GREEN WEEK';
+    } else {
+      week = 'BLUE WEEK';
+    }
+  } else {
+    if (greenCollectionWeek === '2') {
+      week = 'BLUE WEEK';
+    } else {
+      week = 'GREEN WEEK';
+    }
+  }
 
   //Check if our bin day has passed
   const todayNum = new Date().getDay();
+  console.log(todayNum + 'today' + binDayNum + 'bin day');
   if (todayNum > binDayNum) {
     //bin day has passed
-    if (week.html() === 'BLUE WEEK') {
+    if (week === 'BLUE WEEK') {
       //Next week must be green
       speakOutput = `${messages.welcome} ${messages.nextgreen} ${
         messages.collectionday
@@ -115,7 +160,8 @@ const testfunc = async () => {
     }
   } else {
     //bin day hasn't passed
-    if (week.html() === 'BLUE WEEK') {
+
+    if (week === 'BLUE WEEK') {
       speakOutput = `${messages.welcome} ${messages.blueweek} ${
         messages.collectionday
       } ${getDayName(binDayNum)} `;
@@ -129,4 +175,4 @@ const testfunc = async () => {
   console.log(speakOutput);
 };
 
-testfunc();
+LaunchRequest();
